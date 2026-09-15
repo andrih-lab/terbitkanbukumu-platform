@@ -75,19 +75,19 @@ semua diimplementasikan.
 
 ## Infrastruktur Produksi (di luar fitur, perlu sebelum go-live)
 
-- **Database**: migrasi dari SQLite dev ke PostgreSQL terkelola (Supabase,
-  Neon, atau RDS) — ubah `provider` di `prisma/schema.prisma` dan
-  `DATABASE_URL`; skema Prisma sudah kompatibel
-- **Storage berkas**: ganti `src/lib/storage.ts` dari disk lokal ke object
-  storage (Supabase Storage/S3) — mengikuti kontrak `saveReferenceFile`/
-  `readStoredFile`/`deleteStoredFile` yang sudah ada agar pemanggil tidak
-  berubah
+- ~~**Database**: migrasi dari SQLite dev ke PostgreSQL terkelola~~ —
+  **selesai**: `prisma/schema.prisma` memakai `provider = "postgresql"`,
+  migrasi awal digenerate di `prisma/migrations/`, dan `npm run build`
+  menjalankan `prisma migrate deploy && prisma db seed` otomatis (dipakai
+  Vercel saat build)
+- ~~**Storage berkas**: ganti dari disk lokal ke object storage~~ —
+  **selesai**: `src/lib/storage.ts` otomatis memakai Vercel Blob saat env
+  `BLOB_READ_WRITE_TOKEN` tersedia (produksi), fallback ke disk lokal saat
+  pengembangan
 - **Email**: verifikasi email pendaftaran & notifikasi transaksi (mis.
   Resend/SES) — saat ini registrasi tidak memverifikasi email
-- **Deploy**: Vercel (paling mulus untuk Next.js App Router + Server
-  Actions) atau platform Node.js lain; pastikan variabel lingkungan
-  (`DATABASE_URL`, `AUTH_SECRET`, kredensial payment gateway) diatur di
-  platform, bukan di-commit
+- ~~**Deploy**: Vercel~~ — **selesai**, lihat "Deploy ke Vercel" di
+  README.md untuk langkah setup Postgres/Blob/env vars di dashboard
 - **Kepatuhan**: kebijakan privasi, syarat & ketentuan penjualan naskah,
   dan ketentuan hak cipta/lisensi konten yang dijual — perlu ditinjau tim
   legal PT. Mandala Riset Indonesia sebelum fitur pembayaran (Fase 3) aktif
