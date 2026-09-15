@@ -7,8 +7,13 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Koneksi pooled (mis. Supabase POSTGRES_PRISMA_URL) — dipakai runtime app.
+  url       = env("DATABASE_URL")
+  // Koneksi langsung/non-pooled (mis. Supabase POSTGRES_URL_NON_POOLING) —
+  // dipakai khusus untuk `prisma migrate deploy`, karena migrasi skema
+  // (DDL) tidak selalu stabil lewat connection pooler transaksi (pgbouncer).
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
