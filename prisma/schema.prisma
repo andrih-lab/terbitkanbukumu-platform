@@ -1,0 +1,217 @@
+// Skema data TerbitkanBukumu Platform.
+// Lihat ROADMAP.md untuk fase implementasi setiap model.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  AUTHOR
+  ADMIN
+}
+
+enum BookCategory {
+  MONOGRAF
+  REFERENSI
+  TEKNOLOGI_TEPAT_GUNA
+  HANDBOOK
+}
+
+enum ProjectStatus {
+  DRAFT
+  NASKAH_DALAM_PROSES
+  NASKAH_SELESAI
+  DITERBITKAN
+  DIJUAL
+}
+
+enum ManuscriptStatus {
+  BELUM_DIMULAI
+  DIPROSES
+  SELESAI
+  GAGAL
+}
+
+enum OrderStatus {
+  MENUNGGU_PEMBAYARAN
+  LUNAS
+  DIBATALKAN
+  REFUND
+}
+
+enum PublishingRequestStatus {
+  MENUNGGU_PEMBAYARAN
+  DIBAYAR
+  DALAM_PROSES
+  ISBN_TERBIT
+  DITOLAK
+}
+
+enum WithdrawalStatus {
+  MENUNGGU
+  DIPROSES
+  SELESAI
+  DITOLAK
+}
+
+// Penulis (dosen/peneliti) yang menggunakan platform.
+model Author {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  institution  String?
+  phone        String?
+  role         Role     @default(AUTHOR)
+
+  // Data pencairan dana — dilengkapi penulis sebelum bisa menarik dana (fase Withdrawal, lihat ROADMAP.md).
+  bankName          String?
+  bankAccountNumber String?
+  bankAccountName   String?
+  npwp              String?
+
+  bookProjects       BookProject[]
+  withdrawalRequests WithdrawalRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Katalog template layout naskah yang bisa dipilih penulis.
+model Template {
+  id               String  @id @default(cuid())
+  name             String  @unique
+  description      String
+  previewImageUrl  String?
+  isActive         Boolean @default(true)
+
+  bookProjects BookProject[]
+}
+
+// Katalog desain cover yang bisa dipilih penulis.
+model CoverDesign {
+  id              String  @id @default(cuid())
+  name            String  @unique
+  description     String
+  previewImageUrl String?
+  isActive        Boolean @default(true)
+
+  bookProjects BookProject[]
+}
+
+// Satu proyek buku milik seorang penulis.
+model BookProject {
+  id       String        @id @default(cuid())
+  author   Author        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+
+  title    String
+  topic    String
+  category BookCategory
+  synopsis String?
+  status   ProjectStatus @default(DRAFT)
+
+  template      Template?    @relation(fields: [templateId], references: [id])
+  templateId    String?
+  coverDesign   CoverDesign? @relation(fields: [coverDesignId], references: [id])
+  coverDesignId String?
+
+  // Harga jual ditentukan sendiri oleh penulis (dalam Rupiah). Null = belum dijual.
+  priceIdr Int?
+
+  references       Reference[]
+  manuscriptDraft  ManuscriptDraft?
+  orders            Order[]
+  publishingRequest PublishingRequest?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Referensi artikel ilmiah (PDF) yang diunggah sebagai dasar penulisan.
+model Reference {
+  id            String   @id @default(cuid())
+  bookProject   BookProject @relation(fields: [bookProjectId], references: [id], onDelete: Cascade)
+  bookProjectId String
+
+  fileName      String
+  storedPath    String
+  fileSizeBytes Int
+  citation      String?
+
+  uploadedAt DateTime @default(now())
+}
+
+// Hasil generator naskah AI dari topik + referensi (fase AI Generator, lihat ROADMAP.md).
+model ManuscriptDraft {
+  id            String            @id @default(cuid())
+  bookProject   BookProject       @relation(fields: [bookProjectId], references: [id], onDelete: Cascade)
+  bookProjectId String            @unique
+
+  status        ManuscriptStatus @default(BELUM_DIMULAI)
+  content       String?
+  pdfPath       String?
+
+  requestedAt DateTime  @default(now())
+  completedAt DateTime?
+}
+
+// Transaksi penjualan satu buku (fase Marketplace & Pembayaran, lihat ROADMAP.md).
+model Order {
+  id            String      @id @default(cuid())
+  bookProject   BookProject @relation(fields: [bookProjectId], references: [id])
+  bookProjectId String
+
+  buyerName  String
+  buyerEmail String
+
+  priceIdr        Int
+  commissionIdr   Int
+  taxIdr          Int
+  authorEarningIdr Int
+
+  status OrderStatus @default(MENUNGGU_PEMBAYARAN)
+
+  createdAt DateTime @default(now())
+  paidAt    DateTime?
+}
+
+// Permintaan penerbitan berbayar dengan ISBN dari PT. Mandala Riset Indonesia
+// (fase Penerbitan ISBN, lihat ROADMAP.md).
+model PublishingRequest {
+  id            String      @id @default(cuid())
+  bookProject   BookProject @relation(fields: [bookProjectId], references: [id])
+  bookProjectId String      @unique
+
+  packageName String
+  priceIdr    Int
+  isbnNumber  String?
+
+  status PublishingRequestStatus @default(MENUNGGU_PEMBAYARAN)
+
+  requestedAt DateTime  @default(now())
+  issuedAt    DateTime?
+}
+
+// Permintaan penarikan dana penulis (fase Withdrawal & Pajak, lihat ROADMAP.md).
+model WithdrawalRequest {
+  id       String @id @default(cuid())
+  author   Author @relation(fields: [authorId], references: [id])
+  authorId String
+
+  grossIdr      Int
+  commissionIdr Int
+  taxIdr        Int
+  netIdr        Int
+
+  status WithdrawalStatus @default(MENUNGGU)
+
+  requestedAt DateTime  @default(now())
+  processedAt DateTime?
+}
