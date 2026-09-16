@@ -47,6 +47,23 @@ Buka http://localhost:3000.
 - `npm run lint` — ESLint
 - `npm run db:seed` — isi ulang katalog Template & CoverDesign
 
+### Setup Database Manual (kalau migrate deploy macet di build)
+
+Ada kasus (mis. build Vercel yang tidak bisa menjangkau database Supabase
+lewat pooler/direct connection, dan gantung tanpa error) di mana
+`prisma migrate deploy` perlu dijalankan manual sekali di luar proses build.
+Build (`npm run build`) sudah dibungkus `timeout` sehingga TIDAK gagal total
+kalau ini terjadi — tapi tabel database perlu dibuat sendiri:
+
+1. Buka dashboard **Supabase** project Anda → **SQL Editor**
+2. Buka berkas `prisma/manual-setup.sql` di repo ini, salin seluruh isinya
+3. Tempel ke SQL Editor, jalankan (Run) — ini membuat semua tabel +
+   mengisi katalog Template/CoverDesign awal, sekali jalan
+4. Kalau nanti konektivitas dari Vercel ke database sudah pulih dan
+   `prisma migrate deploy` bisa jalan otomatis lagi, skrip ini juga sudah
+   menandai migrasi awal sebagai "sudah diterapkan" (lewat tabel
+   `_prisma_migrations`) supaya tidak dicoba dibuat ulang
+
 ## Struktur
 
 - `src/app/(marketing)` (`page.tsx`, `/daftar`, `/masuk`) — halaman publik
