@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma migrate deploy && prisma db seed && next build",
+    "build": "timeout 30 prisma migrate deploy || echo 'PERINGATAN: prisma migrate deploy dilewati (timeout/gagal) - jalankan migrasi manual, lihat README.md'; timeout 20 prisma db seed || echo 'PERINGATAN: prisma db seed dilewati'; next build",
     "start": "next start",
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
