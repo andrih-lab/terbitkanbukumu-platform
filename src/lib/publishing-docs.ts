@@ -76,11 +76,11 @@ function buildSuratPermohonanIsbnHtml(params: {
   .meta-left table td { vertical-align: top; padding-right: 6px; }
   table.fields td { vertical-align: top; padding: 2px 6px 2px 0; }
   table.fields td.label { white-space: nowrap; }
-  p { margin: 0 0 12px 0; text-align: justify; }
-  .signature-block { margin-top: 40px; }
-  .signature-images { position: relative; height: 100px; margin: 8px 0; }
-  .signature-images img.signature { position: absolute; left: 0; top: 0; height: 90px; }
-  .signature-images img.stamp { position: absolute; left: 70px; top: 10px; height: 100px; opacity: 0.9; }
+  p { margin: 0 0 8px 0; text-align: justify; }
+  .signature-block { margin-top: 12px; break-inside: avoid; }
+  .signature-images { position: relative; height: 75px; margin: 4px 0; }
+  .signature-images img.signature { position: absolute; left: 0; top: 0; height: 70px; }
+  .signature-images img.stamp { position: absolute; left: 55px; top: 5px; height: 75px; opacity: 0.9; }
   .director-name { font-weight: 700; text-decoration: underline; margin-top: 4px; }
 </style>
 </head>
