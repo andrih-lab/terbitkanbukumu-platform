@@ -139,6 +139,7 @@ model BookProject {
   authorId String
 
   title    String
+  slug     String?       @unique
   topic    String
   category BookCategory
   synopsis String?

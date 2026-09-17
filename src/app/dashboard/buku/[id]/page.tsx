@@ -266,8 +266,8 @@ export default async function BukuDetailPage({
       <section className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <h2 className="text-lg font-semibold text-slate-900">Harga Jual Buku</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Tentukan harga jual buku Anda sendiri (Rupiah). Penjualan daring akan
-          aktif setelah fitur marketplace tersedia — lihat ROADMAP.md.
+          Tentukan harga jual buku Anda sendiri (Rupiah). Setelah harga
+          disimpan, halaman publik buku aktif dan siap dibagikan ke pembeli.
         </p>
         <form action={setPriceAction} className="mt-4 flex flex-wrap items-center gap-3">
           <input type="hidden" name="bookProjectId" value={project.id} />
@@ -288,6 +288,19 @@ export default async function BukuDetailPage({
             Simpan Harga
           </button>
         </form>
+
+        {project.priceIdr && project.slug && (
+          <div className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            Link publik:{" "}
+            <a
+              href={`${process.env.APP_URL}/buku/${project.slug}`}
+              target="_blank"
+              className="font-medium underline"
+            >
+              {process.env.APP_URL}/buku/{project.slug}
+            </a>
+          </div>
+        )}
       </section>
 
       {/* Penerbitan ISBN — roadmap */}

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAuthor } from "@/lib/session";
 import { deleteStoredFile, saveReferenceFile } from "@/lib/storage";
+import { generateUniqueSlug } from "@/lib/slug";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
@@ -42,8 +43,10 @@ export async function createBookProjectAction(
     return { error: parsed.error.issues[0]?.message ?? "Data tidak valid" };
   }
 
+  const slug = await generateUniqueSlug(parsed.data.title);
+
   const project = await prisma.bookProject.create({
-    data: { ...parsed.data, authorId: author.id },
+    data: { ...parsed.data, authorId: author.id, slug },
   });
 
   revalidatePath("/dashboard/buku");
