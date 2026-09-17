@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyMidtransSignature } from "@/lib/midtrans";
+import { parseMidtransOrderId, verifyMidtransSignature } from "@/lib/midtrans";
 
 type MidtransNotification = {
   order_id: string;
@@ -11,6 +11,25 @@ type MidtransNotification = {
   fraud_status?: string;
 };
 
+function isPaid(transaction_status: string, fraud_status?: string) {
+  return (
+    transaction_status === "settlement" ||
+    (transaction_status === "capture" && fraud_status === "accept")
+  );
+}
+
+function isCancelled(transaction_status: string) {
+  return (
+    transaction_status === "deny" ||
+    transaction_status === "cancel" ||
+    transaction_status === "expire"
+  );
+}
+
+function isRefunded(transaction_status: string) {
+  return transaction_status === "refund" || transaction_status === "partial_refund";
+}
+
 export async function POST(request: Request) {
   const body = (await request.json()) as MidtransNotification;
 
@@ -18,44 +37,61 @@ export async function POST(request: Request) {
     return new NextResponse("Invalid signature", { status: 403 });
   }
 
-  const order = await prisma.order.findUnique({
-    where: { id: body.order_id },
-  });
-  if (!order) {
-    return new NextResponse("Order not found", { status: 404 });
+  const parsed = parseMidtransOrderId(body.order_id);
+  if (!parsed) {
+    return new NextResponse("Unknown order_id format", { status: 404 });
   }
 
   const { transaction_status, fraud_status } = body;
 
-  if (
-    transaction_status === "settlement" ||
-    (transaction_status === "capture" && fraud_status === "accept")
-  ) {
-    if (order.status !== "LUNAS") {
+  if (parsed.kind === "book") {
+    const order = await prisma.order.findUnique({ where: { id: parsed.id } });
+    if (!order) {
+      return new NextResponse("Order not found", { status: 404 });
+    }
+
+    if (isPaid(transaction_status, fraud_status)) {
+      if (order.status !== "LUNAS") {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { status: "LUNAS", paidAt: new Date() },
+        });
+      }
+    } else if (isCancelled(transaction_status)) {
       await prisma.order.update({
         where: { id: order.id },
-        data: { status: "LUNAS", paidAt: new Date() },
+        data: { status: "DIBATALKAN" },
+      });
+    } else if (isRefunded(transaction_status)) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { status: "REFUND" },
       });
     }
-  } else if (
-    transaction_status === "deny" ||
-    transaction_status === "cancel" ||
-    transaction_status === "expire"
-  ) {
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { status: "DIBATALKAN" },
+    // "pending" dan status lain: tidak diubah, tunggu notifikasi berikutnya.
+  } else {
+    const req = await prisma.publishingRequest.findUnique({
+      where: { id: parsed.id },
     });
-  } else if (
-    transaction_status === "refund" ||
-    transaction_status === "partial_refund"
-  ) {
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { status: "REFUND" },
-    });
+    if (!req) {
+      return new NextResponse("Publishing request not found", { status: 404 });
+    }
+
+    if (isPaid(transaction_status, fraud_status)) {
+      if (req.status === "MENUNGGU_PEMBAYARAN") {
+        await prisma.publishingRequest.update({
+          where: { id: req.id },
+          data: { status: "DIBAYAR" },
+        });
+      }
+    } else if (isCancelled(transaction_status)) {
+      await prisma.publishingRequest.update({
+        where: { id: req.id },
+        data: { status: "DITOLAK" },
+      });
+    }
+    // Refund untuk penerbitan ISBN belum ada alurnya — ditangani manual admin.
   }
-  // "pending" dan status lain: tidak diubah, tunggu notifikasi berikutnya.
 
   return NextResponse.json({ received: true });
 }

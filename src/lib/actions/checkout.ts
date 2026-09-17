@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { createSnapTransaction } from "@/lib/midtrans";
+import { buildMidtransOrderId, createSnapTransaction } from "@/lib/midtrans";
 
 // Komisi platform 30% dari harga jual. Sisanya (70%, "royalti kotor")
 // dipotong PPh Pasal 23: 15% kalau penulis punya NPWP valid, 30% kalau
@@ -74,11 +74,12 @@ export async function checkoutAction(
   let redirectUrl: string;
   try {
     const transaction = await createSnapTransaction({
-      orderId: order.id,
+      midtransOrderId: buildMidtransOrderId("book", order.id),
       grossAmount: project.priceIdr,
       buyerName,
       buyerEmail,
       itemName: project.title,
+      finishPath: `/pesanan/${order.id}`,
     });
     redirectUrl = transaction.redirect_url;
   } catch (error) {

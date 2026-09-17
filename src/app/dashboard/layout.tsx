@@ -47,6 +47,14 @@ export default async function DashboardLayout({
                 {item.label}
               </Link>
             ))}
+            {author.role === "ADMIN" && (
+              <Link
+                href="/dashboard/admin/penerbitan"
+                className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-amber-400 hover:bg-slate-800 hover:text-amber-300"
+              >
+                Admin — Penerbitan
+              </Link>
+            )}
           </nav>
           <form action={signOutAction} className="px-3 pb-6 lg:mt-auto">
             <button

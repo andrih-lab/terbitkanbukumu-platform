@@ -28,3 +28,11 @@ export const PROJECT_STATUS_LABEL: Record<string, string> = {
   DITERBITKAN: "Diterbitkan",
   DIJUAL: "Dijual",
 };
+
+export const PUBLISHING_STATUS_LABEL: Record<string, string> = {
+  MENUNGGU_PEMBAYARAN: "Menunggu Pembayaran",
+  DIBAYAR: "Sudah Dibayar",
+  DALAM_PROSES: "Sedang Diproses",
+  ISBN_TERBIT: "ISBN Terbit",
+  DITOLAK: "Ditolak",
+};

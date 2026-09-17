@@ -7,6 +7,24 @@ const snap = new midtransClient.Snap({
   clientKey: process.env.MIDTRANS_CLIENT_KEY!,
 });
 
+// Satu akun Midtrans dipakai untuk dua jenis transaksi (penjualan buku &
+// penerbitan ISBN) yang datang dari tabel berbeda (Order / PublishingRequest)
+// — prefix ini biar webhook tahu tabel mana yang harus di-update, tanpa
+// mengubah id asli di database.
+export type MidtransOrderKind = "book" | "isbn";
+
+export function buildMidtransOrderId(kind: MidtransOrderKind, id: string): string {
+  return `${kind}-${id}`;
+}
+
+export function parseMidtransOrderId(
+  orderId: string,
+): { kind: MidtransOrderKind; id: string } | null {
+  const match = orderId.match(/^(book|isbn)-(.+)$/);
+  if (!match) return null;
+  return { kind: match[1] as MidtransOrderKind, id: match[2] };
+}
+
 // @types/midtrans-client cuma mendeklarasikan `transaction_details` —
 // field lain di bawah ini nyata & didukung API Snap Midtrans (lihat docs),
 // jadi didefinisikan sendiri di sini lalu di-cast saat memanggil SDK.
@@ -18,15 +36,19 @@ type SnapCreateTransactionParams = {
 };
 
 export async function createSnapTransaction(params: {
-  orderId: string;
+  // Order ID yang dikirim ke Midtrans — pakai buildMidtransOrderId(...).
+  midtransOrderId: string;
   grossAmount: number;
   buyerName: string;
   buyerEmail: string;
   itemName: string;
+  // Path relatif (mis. "/pesanan/xxx") tujuan redirect setelah pembeli
+  // selesai bayar — beda jenis transaksi, beda halaman tujuan.
+  finishPath: string;
 }) {
   const payload: SnapCreateTransactionParams = {
     transaction_details: {
-      order_id: params.orderId,
+      order_id: params.midtransOrderId,
       gross_amount: params.grossAmount,
     },
     customer_details: {
@@ -35,14 +57,14 @@ export async function createSnapTransaction(params: {
     },
     item_details: [
       {
-        id: params.orderId,
+        id: params.midtransOrderId,
         price: params.grossAmount,
         quantity: 1,
         name: params.itemName.slice(0, 50),
       },
     ],
     callbacks: {
-      finish: `${process.env.APP_URL}/pesanan/${params.orderId}`,
+      finish: `${process.env.APP_URL}${params.finishPath}`,
     },
   };
 

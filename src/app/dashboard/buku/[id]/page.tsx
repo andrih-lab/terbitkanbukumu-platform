@@ -11,11 +11,15 @@ import {
   setPriceAction,
 } from "@/lib/actions/book-projects";
 import { generateBookPdfAction } from "@/lib/actions/manuscript";
+import { requestPublishingAction } from "@/lib/actions/publishing";
 import { getManuscriptSuggestions } from "@/lib/manuscript/suggestions";
+import { PUBLISHING_PACKAGES } from "@/lib/publishing-packages";
 import {
   BOOK_CATEGORY_LABEL,
   PROJECT_STATUS_LABEL,
+  PUBLISHING_STATUS_LABEL,
   formatDate,
+  formatIdr,
 } from "@/lib/format";
 
 export default async function BukuDetailPage({
@@ -33,6 +37,7 @@ export default async function BukuDetailPage({
       template: true,
       coverDesign: true,
       manuscriptDraft: true,
+      publishingRequest: true,
     },
   });
 
@@ -46,6 +51,7 @@ export default async function BukuDetailPage({
   ]);
 
   const manuscriptDraft = project.manuscriptDraft;
+  const publishingRequest = project.publishingRequest;
   const suggestions = manuscriptDraft?.content
     ? getManuscriptSuggestions(manuscriptDraft.content, project.category)
     : [];
@@ -303,15 +309,65 @@ export default async function BukuDetailPage({
         )}
       </section>
 
-      {/* Penerbitan ISBN — roadmap */}
-      <section className="rounded-xl border border-dashed border-slate-300 bg-white p-6">
+      {/* Penerbitan ISBN */}
+      <section className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <h2 className="text-lg font-semibold text-slate-900">
           Penerbitan Berbayar dengan ISBN
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          Segera hadir — ajukan penerbitan resmi ber-ISBN dari PT. Mandala Riset
-          Indonesia langsung dari halaman ini. Lihat ROADMAP.md.
+          Ajukan penerbitan resmi ber-ISBN dari PT. Mandala Riset Indonesia.
+          Layout dan cover naskah sudah gratis lewat platform ini — paket di
+          bawah khusus untuk pengurusan ISBN resmi, cetak fisik, dan
+          editing manusia.
         </p>
+
+        {publishingRequest && publishingRequest.status !== "DITOLAK" ? (
+          <div className="mt-4 rounded-lg bg-slate-50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium text-slate-800">
+                {publishingRequest.packageName} —{" "}
+                {formatIdr(publishingRequest.priceIdr)}
+              </p>
+              <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+                {PUBLISHING_STATUS_LABEL[publishingRequest.status]}
+              </span>
+            </div>
+            {publishingRequest.isbnNumber && (
+              <p className="mt-2 text-sm text-slate-600">
+                Nomor ISBN:{" "}
+                <span className="font-medium text-slate-900">
+                  {publishingRequest.isbnNumber}
+                </span>
+              </p>
+            )}
+          </div>
+        ) : !manuscriptDraft || manuscriptDraft.status !== "SELESAI" ? (
+          <p className="mt-4 text-sm text-slate-500">
+            Buat PDF buku terlebih dahulu (bagian Naskah di atas) sebelum bisa
+            mengajukan penerbitan ISBN.
+          </p>
+        ) : (
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {PUBLISHING_PACKAGES.map((pkg) => (
+              <form key={pkg.id} action={requestPublishingAction}>
+                <input type="hidden" name="bookProjectId" value={project.id} />
+                <input type="hidden" name="packageId" value={pkg.id} />
+                <button
+                  type="submit"
+                  className="flex h-full w-full flex-col rounded-lg border border-slate-200 p-4 text-left transition hover:border-indigo-300"
+                >
+                  <p className="font-medium text-slate-900">{pkg.name}</p>
+                  <p className="mt-1 text-lg font-bold text-indigo-700">
+                    {formatIdr(pkg.priceIdr)}
+                  </p>
+                  <p className="mt-2 text-xs text-slate-600">
+                    {pkg.description}
+                  </p>
+                </button>
+              </form>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

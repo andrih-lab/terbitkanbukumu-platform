@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -17,5 +17,14 @@ export async function requireAuthor() {
     redirect("/masuk");
   }
 
+  return author;
+}
+
+/** Sama seperti requireAuthor(), tapi 404 kalau bukan staf admin penerbit. */
+export async function requireAdmin() {
+  const author = await requireAuthor();
+  if (author.role !== "ADMIN") {
+    notFound();
+  }
   return author;
 }
