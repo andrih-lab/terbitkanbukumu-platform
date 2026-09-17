@@ -46,7 +46,10 @@ function buildSuratPermohonanIsbnHtml(params: {
   signatureDataUri: string;
   stampDataUri: string;
 }): string {
-  const checkbox = (checked: boolean) => (checked ? "☑" : "☐");
+  // Pakai [X]/[ ] alih-alih glyph unicode (☑/☐) — font fallback di
+  // Linux/headless Chromium sering tidak punya glyph itu, jadi tidak
+  // tampak sama sekali di PDF.
+  const checkbox = (checked: boolean) => (checked ? "[X]" : "[ ]");
 
   return `<!DOCTYPE html>
 <html>
