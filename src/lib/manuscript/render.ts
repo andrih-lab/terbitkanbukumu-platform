@@ -1,6 +1,5 @@
-import puppeteer, { type Browser } from "puppeteer-core";
 import { PDFDocument } from "pdf-lib";
-import pLimit from "p-limit";
+import { escapeHtml, renderHtmlToPdf, renderLimit } from "@/lib/pdf-engine";
 
 // Parameter render diambil dari Template.configJson / CoverDesign.configJson
 // (lihat prisma/seed.ts untuk contoh nilainya).
@@ -23,39 +22,6 @@ export type CoverConfig = {
   authorColor: string;
   accentColor: string;
 };
-
-// Satu instance browser dipakai ulang lintas request (hindari biaya launch
-// ~1-2 detik/100MB+ tiap kali), dan render diserialisasi (p-limit(1)) supaya
-// paling banyak satu render jalan bersamaan — VPS ini hanya 3.8GB RAM dan
-// juga menjalankan Nextcloud + Postgres + MariaDB.
-let browserPromise: Promise<Browser> | null = null;
-const renderLimit = pLimit(1);
-
-async function getBrowser(): Promise<Browser> {
-  if (browserPromise) {
-    const existing = await browserPromise;
-    if (existing.isConnected()) return existing;
-  }
-  browserPromise = puppeteer.launch({
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-    ],
-  });
-  return browserPromise;
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 function buildBodyHtml(contentHtml: string, config: TemplateConfig): string {
   return `<!DOCTYPE html>
@@ -136,32 +102,6 @@ function buildCoverHtml(
 </html>`;
 }
 
-async function renderHtmlToPdf(
-  html: string,
-  pageSize: Pick<TemplateConfig, "pageWidthMm" | "pageHeightMm">,
-  margins: {
-    top: string;
-    bottom: string;
-    left: string;
-    right: string;
-  },
-): Promise<Buffer> {
-  const browser = await getBrowser();
-  const page = await browser.newPage();
-  try {
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdfBytes = await page.pdf({
-      width: `${pageSize.pageWidthMm}mm`,
-      height: `${pageSize.pageHeightMm}mm`,
-      printBackground: true,
-      margin: margins,
-    });
-    return Buffer.from(pdfBytes);
-  } finally {
-    await page.close();
-  }
-}
-
 // Render naskah (content HTML) + cover jadi satu PDF buku, sesuai Template
 // dan CoverDesign pilihan penulis. Cover selalu memakai ukuran halaman dari
 // `templateConfig` (bukan konfigurasinya sendiri) supaya PDF gabungan
@@ -176,16 +116,20 @@ export async function renderBookPdf(params: {
 }): Promise<Buffer> {
   return renderLimit(async () => {
     const { templateConfig } = params;
+    const pageSize = {
+      widthMm: templateConfig.pageWidthMm,
+      heightMm: templateConfig.pageHeightMm,
+    };
 
     const coverPdfBytes = await renderHtmlToPdf(
       buildCoverHtml(params.coverConfig, params.title, params.authorName),
-      templateConfig,
+      pageSize,
       { top: "0", bottom: "0", left: "0", right: "0" },
     );
 
     const bodyPdfBytes = await renderHtmlToPdf(
       buildBodyHtml(params.contentHtml, templateConfig),
-      templateConfig,
+      pageSize,
       {
         top: `${templateConfig.marginTopMm}mm`,
         bottom: `${templateConfig.marginBottomMm}mm`,

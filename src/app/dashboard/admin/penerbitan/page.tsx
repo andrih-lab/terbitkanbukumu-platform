@@ -69,6 +69,14 @@ export default async function AdminPenerbitanPage() {
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+              <a
+                href={`/api/publishing-requests/${req.id}/surat-permohonan`}
+                target="_blank"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Unduh Surat Permohonan ISBN
+              </a>
+
               {req.status === "DIBAYAR" && (
                 <form action={markPublishingInProgressAction}>
                   <input type="hidden" name="publishingRequestId" value={req.id} />
@@ -132,9 +140,18 @@ export default async function AdminPenerbitanPage() {
                     {req.isbnNumber && ` · ISBN ${req.isbnNumber}`}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                  {PUBLISHING_STATUS_LABEL[req.status]}
-                </span>
+                <div className="flex shrink-0 items-center gap-3">
+                  <a
+                    href={`/api/publishing-requests/${req.id}/surat-permohonan`}
+                    target="_blank"
+                    className="text-xs font-medium text-indigo-700 hover:underline"
+                  >
+                    Unduh Surat
+                  </a>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                    {PUBLISHING_STATUS_LABEL[req.status]}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>
