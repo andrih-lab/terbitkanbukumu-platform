@@ -90,6 +90,12 @@ export async function generateBookPdfAction(formData: FormData) {
 
   await assertOwnedProject(author.id, bookProjectId);
 
+  if (!author.emailVerifiedAt) {
+    // Dijaga juga di UI (tombol tidak ditampilkan) — ini pengaman kedua.
+    revalidatePath(`/dashboard/buku/${bookProjectId}`);
+    return;
+  }
+
   const project = await prisma.bookProject.findUniqueOrThrow({
     where: { id: bookProjectId },
     include: {

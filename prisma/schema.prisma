@@ -80,14 +80,19 @@ model Author {
   phone        String?
   role         Role     @default(AUTHOR)
 
+  // null = belum verifikasi email. Login tetap diizinkan tanpa verifikasi,
+  // tapi beberapa aksi (mis. generate PDF buku) diblokir sampai terisi.
+  emailVerifiedAt DateTime?
+
   // Data pencairan dana — dilengkapi penulis sebelum bisa menarik dana (fase Withdrawal, lihat ROADMAP.md).
   bankName          String?
   bankAccountNumber String?
   bankAccountName   String?
   npwp              String?
 
-  bookProjects       BookProject[]
-  withdrawalRequests WithdrawalRequest[]
+  bookProjects            BookProject[]
+  withdrawalRequests      WithdrawalRequest[]
+  emailVerificationTokens EmailVerificationToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -245,4 +250,17 @@ model WithdrawalRequest {
 
   requestedAt DateTime  @default(now())
   processedAt DateTime?
+}
+
+// Token verifikasi email pendaftaran (dikirim via Resend). Hanya
+// tokenHash (SHA-256 dari token asli) yang disimpan — token asli hanya
+// pernah ada di link email, tidak pernah masuk DB.
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  author    Author   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String
+  tokenHash String   @unique
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
 }

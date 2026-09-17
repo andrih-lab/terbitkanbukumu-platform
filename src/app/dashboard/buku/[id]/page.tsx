@@ -50,7 +50,10 @@ export default async function BukuDetailPage({
     ? getManuscriptSuggestions(manuscriptDraft.content, project.category)
     : [];
   const canGeneratePdf = Boolean(
-    manuscriptDraft?.content && project.templateId && project.coverDesignId,
+    manuscriptDraft?.content &&
+      project.templateId &&
+      project.coverDesignId &&
+      author.emailVerifiedAt,
   );
 
   return (
@@ -167,8 +170,9 @@ export default async function BukuDetailPage({
           <div className="mt-6 border-t border-slate-100 pt-6">
             {!canGeneratePdf ? (
               <p className="text-sm text-slate-500">
-                Pilih Template dan Desain Cover di bawah untuk bisa membuat PDF
-                buku.
+                {!author.emailVerifiedAt
+                  ? "Verifikasi email Anda dulu (lihat banner di atas) untuk bisa membuat PDF buku."
+                  : "Pilih Template dan Desain Cover di bawah untuk bisa membuat PDF buku."}
               </p>
             ) : (
               <form action={generateBookPdfAction}>

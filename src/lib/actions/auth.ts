@@ -1,11 +1,44 @@
 "use server";
 
+import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { signIn, signOut } from "@/lib/auth";
+import { requireAuthor } from "@/lib/session";
+import { sendVerificationEmail } from "@/lib/email";
+
+const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 jam
+
+function createVerificationToken() {
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS);
+  return { token, tokenHash, expiresAt };
+}
+
+async function issueAndSendVerificationEmail(
+  authorId: string,
+  email: string,
+  name: string,
+) {
+  const { token, tokenHash, expiresAt } = createVerificationToken();
+  await prisma.emailVerificationToken.create({
+    data: { authorId, tokenHash, expiresAt },
+  });
+
+  const verifyUrl = `${process.env.APP_URL}/verifikasi-email?token=${token}`;
+  try {
+    await sendVerificationEmail(email, name, verifyUrl);
+  } catch (error) {
+    // Kegagalan kirim email tidak boleh menggagalkan registrasi/permintaan
+    // kirim ulang — penulis masih bisa pakai "Kirim ulang email verifikasi".
+    console.error("Gagal mengirim email verifikasi:", error);
+  }
+}
 
 const registerSchema = z.object({
   name: z.string().min(3, "Nama minimal 3 karakter"),
@@ -42,11 +75,25 @@ export async function registerAction(
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  await prisma.author.create({
+  const author = await prisma.author.create({
     data: { name, email, institution, passwordHash },
   });
 
+  await issueAndSendVerificationEmail(author.id, author.email, author.name);
+
   redirect("/masuk?terdaftar=1");
+}
+
+export async function resendVerificationEmailAction() {
+  const author = await requireAuthor();
+  if (author.emailVerifiedAt) return;
+
+  await prisma.emailVerificationToken.deleteMany({
+    where: { authorId: author.id },
+  });
+  await issueAndSendVerificationEmail(author.id, author.email, author.name);
+
+  revalidatePath("/dashboard");
 }
 
 export type LoginState = {
