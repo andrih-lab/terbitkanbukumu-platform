@@ -2,12 +2,16 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAuthor } from "@/lib/session";
 import { ReferenceUploadForm } from "@/components/reference-upload-form";
+import { ManuscriptUploadForm } from "@/components/manuscript-upload-form";
+import { GeneratePdfButton } from "@/components/generate-pdf-button";
 import {
   chooseCoverAction,
   chooseTemplateAction,
   deleteReferenceAction,
   setPriceAction,
 } from "@/lib/actions/book-projects";
+import { generateBookPdfAction } from "@/lib/actions/manuscript";
+import { getManuscriptSuggestions } from "@/lib/manuscript/suggestions";
 import {
   BOOK_CATEGORY_LABEL,
   PROJECT_STATUS_LABEL,
@@ -28,6 +32,7 @@ export default async function BukuDetailPage({
       references: { orderBy: { uploadedAt: "desc" } },
       template: true,
       coverDesign: true,
+      manuscriptDraft: true,
     },
   });
 
@@ -39,6 +44,14 @@ export default async function BukuDetailPage({
     prisma.template.findMany({ where: { isActive: true } }),
     prisma.coverDesign.findMany({ where: { isActive: true } }),
   ]);
+
+  const manuscriptDraft = project.manuscriptDraft;
+  const suggestions = manuscriptDraft?.content
+    ? getManuscriptSuggestions(manuscriptDraft.content, project.category)
+    : [];
+  const canGeneratePdf = Boolean(
+    manuscriptDraft?.content && project.templateId && project.coverDesignId,
+  );
 
   return (
     <div className="max-w-4xl space-y-8">
@@ -105,23 +118,84 @@ export default async function BukuDetailPage({
         )}
       </section>
 
-      {/* Generator naskah AI — roadmap */}
-      <section className="rounded-xl border border-dashed border-indigo-300 bg-indigo-50/50 p-6">
-        <h2 className="text-lg font-semibold text-slate-900">
-          Generator Naskah (AI)
-        </h2>
+      {/* Naskah: upload, saran perbaikan, generate PDF buku */}
+      <section className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h2 className="text-lg font-semibold text-slate-900">Naskah</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Segera hadir — naskah awal akan dibuat otomatis dari topik dan{" "}
-          {project.references.length} referensi yang telah Anda unggah. Lihat{" "}
-          <span className="font-medium">ROADMAP.md</span> untuk rencana fitur ini.
+          Unggah naskah lengkap Anda (.docx atau .md). Sistem akan memberi
+          saran perbaikan otomatis, lalu menata-letak dan membuat sampulnya
+          sesuai Template dan Desain Cover yang Anda pilih di bawah.
         </p>
-        <button
-          type="button"
-          disabled
-          className="mt-4 cursor-not-allowed rounded-lg bg-indigo-300 px-4 py-2 text-sm font-semibold text-white"
-        >
-          Buat Naskah dari Referensi
-        </button>
+
+        <div className="mt-4">
+          <ManuscriptUploadForm bookProjectId={project.id} />
+        </div>
+
+        {manuscriptDraft?.sourceFileName && (
+          <p className="mt-4 text-sm text-slate-600">
+            Berkas terunggah:{" "}
+            <span className="font-medium text-slate-800">
+              {manuscriptDraft.sourceFileName}
+            </span>
+          </p>
+        )}
+
+        {suggestions.length > 0 && (
+          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-medium text-slate-800">
+              Saran Perbaikan Naskah
+            </p>
+            <ul className="mt-2 space-y-1.5">
+              {suggestions.map((suggestion, index) => (
+                <li
+                  key={index}
+                  className={`text-sm ${
+                    suggestion.severity === "warning"
+                      ? "text-amber-700"
+                      : "text-slate-600"
+                  }`}
+                >
+                  {suggestion.severity === "warning" ? "⚠ " : "· "}
+                  {suggestion.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {manuscriptDraft?.content && (
+          <div className="mt-6 border-t border-slate-100 pt-6">
+            {!canGeneratePdf ? (
+              <p className="text-sm text-slate-500">
+                Pilih Template dan Desain Cover di bawah untuk bisa membuat PDF
+                buku.
+              </p>
+            ) : (
+              <form action={generateBookPdfAction}>
+                <input type="hidden" name="bookProjectId" value={project.id} />
+                <GeneratePdfButton />
+              </form>
+            )}
+
+            {manuscriptDraft.status === "GAGAL" && manuscriptDraft.errorMessage && (
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                Gagal membuat PDF: {manuscriptDraft.errorMessage}
+              </p>
+            )}
+
+            {manuscriptDraft.pdfPath && (
+              <p className="mt-3 text-sm">
+                <a
+                  href={`/api/manuscripts/${project.id}/download`}
+                  target="_blank"
+                  className="font-medium text-indigo-700 hover:underline"
+                >
+                  Unduh PDF Buku
+                </a>
+              </p>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Template layout */}

@@ -43,6 +43,11 @@ enum ManuscriptStatus {
   GAGAL
 }
 
+enum ManuscriptSourceFormat {
+  DOCX
+  MARKDOWN
+}
+
 enum OrderStatus {
   MENUNGGU_PEMBAYARAN
   LUNAS
@@ -96,6 +101,10 @@ model Template {
   previewImageUrl  String?
   isActive         Boolean @default(true)
 
+  // Parameter render PDF: ukuran halaman, margin, font, line-height —
+  // lihat src/lib/manuscript/render.ts untuk bentuk objeknya.
+  configJson Json
+
   bookProjects BookProject[]
 }
 
@@ -106,6 +115,10 @@ model CoverDesign {
   description     String
   previewImageUrl String?
   isActive        Boolean @default(true)
+
+  // Parameter render cover: warna, ukuran font judul — ukuran halaman
+  // selalu mengikuti Template yang dipilih (lihat render.ts).
+  configJson Json
 
   bookProjects BookProject[]
 }
@@ -153,7 +166,10 @@ model Reference {
   uploadedAt DateTime @default(now())
 }
 
-// Hasil generator naskah AI dari topik + referensi (fase AI Generator, lihat ROADMAP.md).
+// Naskah buku: diisi lewat unggahan langsung penulis (.docx/.md, diekstrak
+// jadi HTML semantik di `content`) atau, di fase mendatang, generator AI
+// (lihat ROADMAP.md). `pdfPath` adalah hasil akhir PDF buku (naskah + cover)
+// setelah dirender otomatis sesuai Template & CoverDesign pilihan penulis.
 model ManuscriptDraft {
   id            String            @id @default(cuid())
   bookProject   BookProject       @relation(fields: [bookProjectId], references: [id], onDelete: Cascade)
@@ -162,6 +178,12 @@ model ManuscriptDraft {
   status        ManuscriptStatus @default(BELUM_DIMULAI)
   content       String?
   pdfPath       String?
+  errorMessage  String?
+
+  // Berkas asli yang diunggah penulis (sebelum diekstrak ke `content`).
+  sourceFileName   String?
+  sourceStoredPath String?
+  sourceFormat     ManuscriptSourceFormat?
 
   requestedAt DateTime  @default(now())
   completedAt DateTime?

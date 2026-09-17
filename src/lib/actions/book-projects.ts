@@ -50,7 +50,7 @@ export async function createBookProjectAction(
   redirect(`/dashboard/buku/${project.id}`);
 }
 
-async function assertOwnedProject(authorId: string, bookProjectId: string) {
+export async function assertOwnedProject(authorId: string, bookProjectId: string) {
   const project = await prisma.bookProject.findUnique({
     where: { id: bookProjectId },
   });

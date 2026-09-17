@@ -41,6 +41,56 @@ export async function saveReferenceFile(bookProjectId: string, file: File) {
   };
 }
 
+export async function saveManuscriptSourceFile(
+  bookProjectId: string,
+  file: File,
+) {
+  const storedName = safeFileName(file.name);
+
+  if (useBlob) {
+    const blob = await put(
+      `manuscripts/${bookProjectId}/source/${storedName}`,
+      file,
+      { access: "public" },
+    );
+    return { storedPath: blob.url };
+  }
+
+  const dir = path.join(STORAGE_ROOT, "manuscripts", bookProjectId, "source");
+  await mkdir(dir, { recursive: true });
+  const fullPath = path.join(dir, storedName);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await writeFile(fullPath, buffer);
+
+  return {
+    storedPath: path.join("manuscripts", bookProjectId, "source", storedName),
+  };
+}
+
+// Simpan hasil render PDF akhir (naskah + cover, sudah berupa Buffer,
+// bukan File upload) — dipakai oleh src/lib/manuscript/render.ts.
+export async function saveManuscriptPdf(bookProjectId: string, buffer: Buffer) {
+  const storedName = `${crypto.randomUUID()}.pdf`;
+
+  if (useBlob) {
+    const blob = await put(
+      `manuscripts/${bookProjectId}/output/${storedName}`,
+      buffer,
+      { access: "public", contentType: "application/pdf" },
+    );
+    return { storedPath: blob.url };
+  }
+
+  const dir = path.join(STORAGE_ROOT, "manuscripts", bookProjectId, "output");
+  await mkdir(dir, { recursive: true });
+  const fullPath = path.join(dir, storedName);
+  await writeFile(fullPath, buffer);
+
+  return {
+    storedPath: path.join("manuscripts", bookProjectId, "output", storedName),
+  };
+}
+
 export async function readStoredFile(storedPath: string) {
   if (storedPath.startsWith("http")) {
     const response = await fetch(storedPath);
