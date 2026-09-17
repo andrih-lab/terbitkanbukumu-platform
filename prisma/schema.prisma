@@ -102,8 +102,10 @@ model Template {
   isActive         Boolean @default(true)
 
   // Parameter render PDF: ukuran halaman, margin, font, line-height —
-  // lihat src/lib/manuscript/render.ts untuk bentuk objeknya.
-  configJson Json
+  // lihat src/lib/manuscript/render.ts untuk bentuk objeknya. Default "{}"
+  // hanya untuk kompatibilitas migrasi data lama; prisma/seed.ts selalu
+  // mengisi nilai nyata untuk template aktif.
+  configJson Json @default("{}")
 
   bookProjects BookProject[]
 }
@@ -117,8 +119,10 @@ model CoverDesign {
   isActive        Boolean @default(true)
 
   // Parameter render cover: warna, ukuran font judul — ukuran halaman
-  // selalu mengikuti Template yang dipilih (lihat render.ts).
-  configJson Json
+  // selalu mengikuti Template yang dipilih (lihat render.ts). Default "{}"
+  // hanya untuk kompatibilitas migrasi data lama; prisma/seed.ts selalu
+  // mengisi nilai nyata untuk cover aktif.
+  configJson Json @default("{}")
 
   bookProjects BookProject[]
 }
