@@ -4,16 +4,21 @@ import { requireAuthor } from "@/lib/session";
 import { ReferenceUploadForm } from "@/components/reference-upload-form";
 import { ManuscriptUploadForm } from "@/components/manuscript-upload-form";
 import { GeneratePdfButton } from "@/components/generate-pdf-button";
+import { CustomCoverUploadForm } from "@/components/custom-cover-upload-form";
+import { CoverPreview } from "@/components/cover-preview";
+import { TemplatePreview } from "@/components/template-preview";
 import {
   chooseCoverAction,
   chooseTemplateAction,
   deleteReferenceAction,
   setPriceAction,
 } from "@/lib/actions/book-projects";
+import { removeCustomCoverAction } from "@/lib/actions/cover";
 import { generateBookPdfAction } from "@/lib/actions/manuscript";
 import { requestPublishingAction } from "@/lib/actions/publishing";
 import { getManuscriptSuggestions } from "@/lib/manuscript/suggestions";
 import { PUBLISHING_PACKAGES } from "@/lib/publishing-packages";
+import type { CoverConfig, TemplateConfig } from "@/lib/manuscript/render";
 import {
   BOOK_CATEGORY_LABEL,
   PROJECT_STATUS_LABEL,
@@ -224,13 +229,16 @@ export default async function BukuDetailPage({
               <input type="hidden" name="templateId" value={template.id} />
               <button
                 type="submit"
-                className={`w-full rounded-lg border p-4 text-left transition ${
+                className={`w-full rounded-lg border p-3 text-left transition ${
                   project.templateId === template.id
                     ? "border-indigo-500 bg-indigo-50"
                     : "border-slate-200 hover:border-indigo-300"
                 }`}
               >
-                <p className="font-medium text-slate-900">{template.name}</p>
+                <TemplatePreview
+                  configJson={template.configJson as unknown as TemplateConfig}
+                />
+                <p className="mt-2 font-medium text-slate-900">{template.name}</p>
                 <p className="mt-1 text-xs text-slate-600">{template.description}</p>
               </button>
             </form>
@@ -242,11 +250,46 @@ export default async function BukuDetailPage({
       <section className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <h2 className="text-lg font-semibold text-slate-900">Desain Cover</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Terpilih:{" "}
-          <span className="font-medium text-slate-800">
-            {project.coverDesign?.name ?? "Belum dipilih"}
-          </span>
+          Sudah punya cover sendiri? Unggah di sini — atau pilih dari galeri
+          di bawah.
         </p>
+
+        <div className="mt-4">
+          <CustomCoverUploadForm bookProjectId={project.id} />
+        </div>
+
+        {project.customCoverPath ? (
+          <div className="mt-4 flex items-start gap-4 rounded-lg bg-slate-50 p-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/covers/${project.id}`}
+              alt="Cover kustom"
+              className="aspect-[3/4] w-32 rounded-lg object-cover"
+            />
+            <div>
+              <p className="text-sm font-medium text-slate-800">
+                Cover kustom sedang dipakai.
+              </p>
+              <form action={removeCustomCoverAction} className="mt-2">
+                <input type="hidden" name="bookProjectId" value={project.id} />
+                <button
+                  type="submit"
+                  className="text-sm text-red-600 hover:underline"
+                >
+                  Hapus, pakai galeri
+                </button>
+              </form>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-slate-600">
+            Terpilih dari galeri:{" "}
+            <span className="font-medium text-slate-800">
+              {project.coverDesign?.name ?? "Belum dipilih"}
+            </span>
+          </p>
+        )}
+
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {covers.map((cover) => (
             <form key={cover.id} action={chooseCoverAction}>
@@ -254,13 +297,18 @@ export default async function BukuDetailPage({
               <input type="hidden" name="coverDesignId" value={cover.id} />
               <button
                 type="submit"
-                className={`w-full rounded-lg border p-4 text-left transition ${
-                  project.coverDesignId === cover.id
+                className={`w-full rounded-lg border p-3 text-left transition ${
+                  !project.customCoverPath && project.coverDesignId === cover.id
                     ? "border-indigo-500 bg-indigo-50"
                     : "border-slate-200 hover:border-indigo-300"
                 }`}
               >
-                <p className="font-medium text-slate-900">{cover.name}</p>
+                <CoverPreview
+                  configJson={cover.configJson as unknown as CoverConfig}
+                  title={project.title}
+                  authorName={author.name}
+                />
+                <p className="mt-2 font-medium text-slate-900">{cover.name}</p>
                 <p className="mt-1 text-xs text-slate-600">{cover.description}</p>
               </button>
             </form>

@@ -150,6 +150,11 @@ model BookProject {
   coverDesign   CoverDesign? @relation(fields: [coverDesignId], references: [id])
   coverDesignId String?
 
+  // Cover gambar milik penulis sendiri (jpg/png) — kalau terisi, dipakai
+  // sebagai cover PDF alih-alih coverDesign (yang tetap tersimpan supaya
+  // pilihan terakhir tidak hilang kalau cover kustom dicabut).
+  customCoverPath String?
+
   // Harga jual ditentukan sendiri oleh penulis (dalam Rupiah). Null = belum dijual.
   priceIdr Int?
 

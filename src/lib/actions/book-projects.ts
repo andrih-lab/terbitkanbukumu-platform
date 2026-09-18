@@ -146,11 +146,17 @@ export async function chooseCoverAction(formData: FormData) {
   const bookProjectId = formData.get("bookProjectId") as string;
   const coverDesignId = formData.get("coverDesignId") as string;
 
-  await assertOwnedProject(author.id, bookProjectId);
+  const project = await assertOwnedProject(author.id, bookProjectId);
+
+  // Pilih dari katalog membatalkan cover kustom yang mungkin sedang aktif
+  // — hindari dua sumber cover sekaligus.
+  if (project.customCoverPath) {
+    await deleteStoredFile(project.customCoverPath);
+  }
 
   await prisma.bookProject.update({
     where: { id: bookProjectId },
-    data: { coverDesignId },
+    data: { coverDesignId, customCoverPath: null },
   });
 
   revalidatePath(`/dashboard/buku/${bookProjectId}`);

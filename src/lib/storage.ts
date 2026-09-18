@@ -91,6 +91,27 @@ export async function saveManuscriptPdf(bookProjectId: string, buffer: Buffer) {
   };
 }
 
+export async function saveCustomCoverFile(bookProjectId: string, file: File) {
+  const storedName = safeFileName(file.name);
+
+  if (useBlob) {
+    const blob = await put(`covers/${bookProjectId}/${storedName}`, file, {
+      access: "public",
+    });
+    return { storedPath: blob.url };
+  }
+
+  const dir = path.join(STORAGE_ROOT, "covers", bookProjectId);
+  await mkdir(dir, { recursive: true });
+  const fullPath = path.join(dir, storedName);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await writeFile(fullPath, buffer);
+
+  return {
+    storedPath: path.join("covers", bookProjectId, storedName),
+  };
+}
+
 export async function readStoredFile(storedPath: string) {
   if (storedPath.startsWith("http")) {
     const response = await fetch(storedPath);

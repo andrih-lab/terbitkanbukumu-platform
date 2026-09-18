@@ -6,6 +6,7 @@ import { requireAuthor } from "@/lib/session";
 import { assertOwnedProject } from "@/lib/actions/book-projects";
 import {
   deleteStoredFile,
+  readStoredFile,
   saveManuscriptPdf,
   saveManuscriptSourceFile,
 } from "@/lib/storage";
@@ -106,11 +107,9 @@ export async function generateBookPdfAction(formData: FormData) {
     },
   });
 
-  if (
-    !project.manuscriptDraft?.content ||
-    !project.template ||
-    !project.coverDesign
-  ) {
+  const hasCover = Boolean(project.coverDesign || project.customCoverPath);
+
+  if (!project.manuscriptDraft?.content || !project.template || !hasCover) {
     // Belum lengkap (naskah/template/cover) — halaman akan menampilkan
     // pesan penuntun, bukan error keras.
     revalidatePath(`/dashboard/buku/${bookProjectId}`);
@@ -123,10 +122,22 @@ export async function generateBookPdfAction(formData: FormData) {
   });
 
   try {
+    const customCoverImage = project.customCoverPath
+      ? {
+          buffer: await readStoredFile(project.customCoverPath),
+          mimeType: project.customCoverPath.toLowerCase().endsWith(".png")
+            ? "image/png"
+            : "image/jpeg",
+        }
+      : undefined;
+
     const pdfBuffer = await renderBookPdf({
       contentHtml: project.manuscriptDraft.content,
       templateConfig: project.template.configJson as unknown as TemplateConfig,
-      coverConfig: project.coverDesign.configJson as unknown as CoverConfig,
+      coverConfig: project.coverDesign
+        ? (project.coverDesign.configJson as unknown as CoverConfig)
+        : undefined,
+      customCoverImage,
       title: project.title,
       authorName: project.author.name,
     });

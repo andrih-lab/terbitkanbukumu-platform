@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/site-header";
 import { CheckoutForm } from "@/components/checkout-form";
+import { CoverPreview } from "@/components/cover-preview";
 import { BOOK_CATEGORY_LABEL, formatIdr } from "@/lib/format";
 import type { CoverConfig } from "@/lib/manuscript/render";
 
@@ -62,26 +63,22 @@ export default async function PublicBookPage({
     <>
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-6 py-12 md:flex-row md:py-16">
-        <div
-          className="flex aspect-[3/4] w-full shrink-0 flex-col items-center justify-center gap-4 rounded-2xl p-8 text-center md:w-64"
-          style={{ backgroundColor: cover?.backgroundColor ?? "#0f172a" }}
-        >
-          <div
-            className="h-1.5 w-14 rounded-full"
-            style={{ backgroundColor: cover?.accentColor ?? "#f59e0b" }}
-          />
-          <p
-            className="text-xl font-bold leading-tight"
-            style={{ color: cover?.titleColor ?? "#ffffff" }}
-          >
-            {project.title}
-          </p>
-          <p
-            className="text-sm"
-            style={{ color: cover?.authorColor ?? "#cbd5e1" }}
-          >
-            {project.author.name}
-          </p>
+        <div className="w-full shrink-0 md:w-64">
+          {project.customCoverPath ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/covers/${project.id}`}
+              alt={`Cover ${project.title}`}
+              className="aspect-[3/4] w-full rounded-2xl object-cover"
+            />
+          ) : (
+            <CoverPreview
+              configJson={cover}
+              title={project.title}
+              authorName={project.author.name}
+              className="rounded-2xl p-8"
+            />
+          )}
         </div>
 
         <div className="flex-1">

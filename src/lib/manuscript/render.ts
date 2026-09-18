@@ -47,6 +47,29 @@ function buildBodyHtml(contentHtml: string, config: TemplateConfig): string {
 </html>`;
 }
 
+function buildImageCoverHtml(imageDataUri: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  .cover {
+    height: 100%;
+    background-image: url("${imageDataUri}");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+</style>
+</head>
+<body>
+  <div class="cover"></div>
+</body>
+</html>`;
+}
+
 function buildCoverHtml(
   config: CoverConfig,
   title: string,
@@ -110,7 +133,11 @@ function buildCoverHtml(
 export async function renderBookPdf(params: {
   contentHtml: string;
   templateConfig: TemplateConfig;
-  coverConfig: CoverConfig;
+  // Salah satu dari dua ini wajib ada: coverConfig (render CSS dari
+  // katalog CoverDesign) atau customCoverImage (gambar unggahan penulis
+  // sendiri, ditempatkan full-bleed di halaman cover).
+  coverConfig?: CoverConfig;
+  customCoverImage?: { buffer: Buffer; mimeType: string };
   title: string;
   authorName: string;
 }): Promise<Buffer> {
@@ -121,8 +148,14 @@ export async function renderBookPdf(params: {
       heightMm: templateConfig.pageHeightMm,
     };
 
+    const coverHtml = params.customCoverImage
+      ? buildImageCoverHtml(
+          `data:${params.customCoverImage.mimeType};base64,${params.customCoverImage.buffer.toString("base64")}`,
+        )
+      : buildCoverHtml(params.coverConfig!, params.title, params.authorName);
+
     const coverPdfBytes = await renderHtmlToPdf(
-      buildCoverHtml(params.coverConfig, params.title, params.authorName),
+      coverHtml,
       pageSize,
       { top: "0", bottom: "0", left: "0", right: "0" },
     );
